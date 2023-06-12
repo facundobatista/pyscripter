@@ -18,12 +18,14 @@ help(numbers.append)
 numbers.append(45)
 numbers
 
+# simple comment, this will be shown in the output
 numbers.extend([1, 2])
 numbers
 
 def foo():
     numbers.append(23)
 
+## double comment, this will not appear in the output
 foo()
 numbers
 ```
@@ -43,6 +45,7 @@ The only argument is the path to the script file to execute.
 Scripter supports the following commands, which should be prefixed with `# <script>:` (configurable):
 
 - `pause <seconds>`: Pauses for the specified number of seconds.
+- `start`: Really starts the script after that line, ignoring everything before.
 - `python_exec <path>`: Specifies the path to the Python executable to use. This command should be used at the top of the script file.
 
 

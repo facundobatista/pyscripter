@@ -7,7 +7,7 @@ import time
 from collections import namedtuple
 
 # all commands need to start with this
-SCRIPTER_CMD_PREFIX = "# <script>:"
+SCRIPTER_CMD_PREFIX = "# <pyscript>:"
 
 # this is a big pause for separating the chunks, to ease the video cutting
 DELAY_LINE_PAUSE = 2
@@ -30,6 +30,9 @@ def main(filepath):
     script_lines = []
     with open(filepath, 'rt', encoding='utf8') as fh:
         for idx, line in enumerate(fh, 1):
+            if line.startswith("##"):
+                continue
+
             if not line.startswith(SCRIPTER_CMD_PREFIX):
                 script_lines.append(line.rstrip(' '))
                 continue
@@ -40,6 +43,8 @@ def main(filepath):
             if command == 'pause':
                 (delay,) = options
                 script_lines.append(Command(func=time.sleep, args=(float(delay),)))
+            if command == 'start':
+                script_lines.clear()
             elif command == "python_exec":
                 # this line is ignored but affect "config"
                 if idx != 1:
