@@ -4,22 +4,45 @@ import random
 import subprocess
 import sys
 import time
-from collections import namedtuple
+from collections import namedtuple, deque
 
 # all commands need to start with this
 SCRIPTER_CMD_PREFIX = "# <pyscript>:"
 
 # this is a big pause for separating the chunks, to ease the video cutting
 DELAY_LINE_PAUSE = 2
-# need this delay for Python to actually show the results
-DELAY_LINE_CR = .2
 # this is for writing cadence
 DELAY_CHAR = .1
 # before finishing everything (so the user prompt doesn't appear fast)
 DELAY_END = 3
 
+# the different prompts in the Python interactive interpreter; after the >>> we have a
+# small delay that reflects the user waiting for something to finish before writing again,
+# bu after the ... we don't wait as the input had not really finished
+PROMPTS = [
+    ([b'>', b'>', b'>', b' '], .5),
+    ([b'.', b'.', b'.', b' '], 0),
+]
 
 Command = namedtuple('Command', 'func args')
+
+
+def wait_for_prompt(proc):
+    """Waits for the Python interpreter to offer any of the prompts."""
+    # write *bytes* directly here (can't decode one byte at a time!)
+    stdout_buffer = sys.stdout.buffer
+
+    sequence = deque(maxlen=4)
+    while True:
+        byte = proc.stdout.read(1)
+        stdout_buffer.write(byte)
+        stdout_buffer.flush()
+        sequence.append(byte)
+        lseq = list(sequence)
+        for prompt, delay in PROMPTS:
+            if lseq == prompt:
+                time.sleep(delay)
+                return
 
 
 def main(filepath):
@@ -105,8 +128,13 @@ def main(filepath):
     # clear screen and set cursor at the top left
     print('\x1b[2J\x1b[H', end='', flush=True)
 
-    proc = subprocess.Popen([python_exec, "-i"], stdin=subprocess.PIPE)
-    time.sleep(DELAY_LINE_PAUSE)  # start with a pause to leave proper time for Python to bootstrap
+    proc = subprocess.Popen(
+        [python_exec, "-u", "-i"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    wait_for_prompt(proc)
 
     for line in script_lines:
         # check if it's a command result
@@ -124,7 +152,8 @@ def main(filepath):
         # send the line to Python all at once for real processing
         proc.stdin.write(line.encode('utf8'))
         proc.stdin.flush()
-        time.sleep(DELAY_LINE_CR)
+
+        wait_for_prompt(proc)
 
     time.sleep(DELAY_END)
 
