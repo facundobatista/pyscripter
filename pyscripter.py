@@ -66,7 +66,7 @@ def main(filepath):
             if command == 'pause':
                 (delay,) = options
                 script_lines.append(Command(func=time.sleep, args=(float(delay),)))
-            if command == 'start':
+            elif command == 'start':
                 script_lines.clear()
             elif command == "python_exec":
                 # this line is ignored but affect "config"
@@ -156,6 +156,7 @@ def main(filepath):
         wait_for_prompt(proc)
 
     time.sleep(DELAY_END)
+    print()
 
 
 if len(sys.argv) != 2:
