@@ -39,6 +39,8 @@ In this example, a long pause is explicitly requested after showing the help (so
 
 The only argument is the path to the script file to execute.
 
+At any time while running, the execution may be paused by ENTER, PAUSE or the `p` key (same keys to un-pause it). CTRL-C will just terminate the execution.
+
 
 ## Commands
 

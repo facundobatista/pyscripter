@@ -1,9 +1,12 @@
 #!/usr/bin/python3
 
 import random
+import select
 import subprocess
 import sys
 import time
+import termios
+import tty
 from collections import namedtuple, deque
 
 # all commands need to start with this
@@ -24,6 +27,9 @@ PROMPTS = [
     ([b'.', b'.', b'.', b' '], 0),
 ]
 
+# keys that will be used to pause/unpause
+PAUSE_KEYS = (" ", "p", "\r", "\n")
+
 Command = namedtuple('Command', 'func args')
 
 
@@ -43,6 +49,25 @@ def wait_for_prompt(proc):
             if lseq == prompt:
                 time.sleep(delay)
                 return
+
+
+def maybe_pause():
+    """Maybe block main process if user paused, until unpauses.
+
+    Note that reading from stdin is always blocking, that's why first time we ask
+    first if something is there. Then in the pause loop it's not needed, as
+    we *want* to block.
+    """
+    ready_to_read, _, _ = select.select([sys.stdin], [], [], 0)
+    if ready_to_read != [sys.stdin]:
+        return
+    ch = sys.stdin.read(1)
+
+    if ch in PAUSE_KEYS:
+        while True:
+            ch = sys.stdin.read(1)
+            if ch in PAUSE_KEYS:
+                break
 
 
 def main(filepath):
@@ -148,12 +173,14 @@ def main(filepath):
             sys.stdout.flush()
             fuzzyness = 1 + (random.random() - 0.5)  # +/- 50%
             time.sleep(DELAY_CHAR * fuzzyness)
+            maybe_pause()
 
         # send the line to Python all at once for real processing
         proc.stdin.write(line.encode('utf8'))
         proc.stdin.flush()
 
         wait_for_prompt(proc)
+        maybe_pause()
 
     time.sleep(DELAY_END)
     print()
@@ -162,4 +189,15 @@ def main(filepath):
 if len(sys.argv) != 2:
     print("USAGE: scripter.py <src_script>")
     exit()
-main(sys.argv[1])
+
+# run main wrapped around setting stdin to not wait newline to send characters
+fd = sys.stdin.fileno()
+old_settings = termios.tcgetattr(fd)
+try:
+    tty.setcbreak(fd)
+    main(sys.argv[1])
+except KeyboardInterrupt:
+    print("\nInterrupted by user")
+    exit(1)
+finally:
+    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
